@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dexidp/dex/connector/xsuaa"
 	"net/http"
 	"net/url"
 	"path"
@@ -473,6 +474,7 @@ var ConnectorsConfig = map[string]func() ConnectorConfig{
 	"openshift":       func() ConnectorConfig { return new(openshift.Config) },
 	// Keep around for backwards compatibility.
 	"samlExperimental": func() ConnectorConfig { return new(saml.Config) },
+	"xsuaa":            func() ConnectorConfig { return new(xsuaa.Config) },
 }
 
 // openConnector will parse the connector config and open the connector.

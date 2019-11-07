@@ -1,103 +1,81 @@
-PROJ=dex
-ORG_PATH=github.com/dexidp
-REPO_PATH=$(ORG_PATH)/$(PROJ)
-export PATH := $(PWD)/bin:$(PATH)
+APP_NAME = dex
+# BASE_PKG is a root packge of the component
+BASE_PKG := github.com/kyma-incubator/dex
+# IMG_GOPATH is a path to go path in the container
+IMG_GOPATH := /go
+BUILDPACK = eu.gcr.io/kyma-project/test-infra/buildpack-golang-toolbox:v20190913-65b55d1
 
-VERSION ?= $(shell ./scripts/git-version)
+IMG_NAME := $(DOCKER_PUSH_REPOSITORY)$(DOCKER_PUSH_DIRECTORY)/$(APP_NAME)
+TAG := $(DOCKER_TAG)
 
-DOCKER_REPO=quay.io/dexidp/dex
-DOCKER_IMAGE=$(DOCKER_REPO):$(VERSION)
+# COMPONENT_DIR is a local path to commponent
+COMPONENT_DIR = $(shell pwd)
+# WORKSPACE_LOCAL_DIR is a path to the scripts folder in the container
+WORKSPACE_LOCAL_DIR = $(IMG_GOPATH)/src/$(BASE_PKG)
+# WORKSPACE_COMPONENT_DIR is a path to commponent in the container
+WORKSPACE_COMPONENT_DIR = $(IMG_GOPATH)/src/$(BASE_PKG)
 
-$( shell mkdir -p bin )
+# Base docker configuration
+DOCKER_CREATE_OPTS := -v $(LOCAL_DIR):$(WORKSPACE_LOCAL_DIR):delegated --rm -w $(WORKSPACE_COMPONENT_DIR) $(BUILDPACK)
 
-user=$(shell id -u -n)
-group=$(shell id -g -n)
+# Check if go is available
+ifneq (,$(shell go version 2>/dev/null))
+DOCKER_CREATE_OPTS := -v $(shell go env GOCACHE):$(IMG_GOCACHE):delegated -v $(shell go env GOPATH)/pkg/dep:$(IMG_GOPATH)/pkg/dep:delegated $(DOCKER_CREATE_OPTS)
+endif
 
-export GOBIN=$(PWD)/bin
+# Check if running with TTY
+ifeq (1, $(shell [ -t 0 ] && echo 1))
+DOCKER_INTERACTIVE := -i
+DOCKER_CREATE_OPTS := -t $(DOCKER_CREATE_OPTS)
+else
+DOCKER_INTERACTIVE_START := --attach
+endif
 
-LD_FLAGS="-w -X $(REPO_PATH)/version.Version=$(VERSION)"
+# Buildpack directives
+define buildpack-mount
+.PHONY: $(1)-local $(1)
+$(1):
+	@echo make $(1)
+	@docker run $(DOCKER_INTERACTIVE) \
+		-v $(COMPONENT_DIR):$(WORKSPACE_COMPONENT_DIR):delegated \
+		$(DOCKER_CREATE_OPTS) make $(1)-local
+endef
 
-# Dependency versions
-GOLANGCI_VERSION = 1.21.0
+VERIFY_IGNORE := /vendor\|/automock
+DIRS_TO_CHECK = go list ./... | grep -v "$(VERIFY_IGNORE)"
+FILES_TO_CHECK = find . -type f -name "*.go" | grep -v "$(VERIFY_IGNORE)"
 
-build: bin/dex bin/example-app bin/grpc-client
+release: test vet check-fmt build-image push-image
 
-bin/dex:
-	@go install -v -ldflags $(LD_FLAGS) $(REPO_PATH)/cmd/dex
+# Targets mounting sources to buildpack
+MOUNT_TARGETS = test vet check-fmt fmt fix-fmt
+$(foreach t,$(MOUNT_TARGETS),$(eval $(call buildpack-mount,$(t))))
 
-bin/example-app:
-	@go install -v -ldflags $(LD_FLAGS) $(REPO_PATH)/cmd/example-app
+test-local:
+	go test -v ./...
 
-bin/grpc-client:
-	@go install -v -ldflags $(LD_FLAGS) $(REPO_PATH)/examples/grpc-client
+vet-local:
+	go vet $$($(DIRS_TO_CHECK))
 
-.PHONY: release-binary
-release-binary:
-	@go build -o /go/bin/dex -v -ldflags $(LD_FLAGS) $(REPO_PATH)/cmd/dex
+check-fmt-local:
+	exit $(shell gofmt -l $$($(FILES_TO_CHECK)) | wc -l | xargs)
 
-.PHONY: revendor
-revendor:
-	@go mod tidy -v
-	@go mod vendor -v
-	@go mod verify
+fmt-local:
+	gofmt -l $$($(FILES_TO_CHECK))
 
-test: bin/test/kube-apiserver bin/test/etcd
-	@go test -v ./...
+fix-fmt-local:
+	gofmt -w $$($(FILES_TO_CHECK))
 
-testrace: bin/test/kube-apiserver bin/test/etcd
-	@go test -v --race ./...
+build-image: pull-licenses
+	docker build -t $(IMG_NAME) .
 
-export TEST_ASSET_KUBE_APISERVER=$(abspath bin/test/kube-apiserver)
-export TEST_ASSET_ETCD=$(abspath bin/test/etcd)
+push-image:
+	docker tag $(IMG_NAME) $(IMG_NAME):$(TAG)
+	docker push $(IMG_NAME):$(TAG)
 
-bin/test/kube-apiserver:
-	@mkdir -p bin/test
-	curl -L https://storage.googleapis.com/k8s-c10s-test-binaries/kube-apiserver-$(shell uname)-x86_64 > bin/test/kube-apiserver
-	chmod +x bin/test/kube-apiserver
-
-bin/test/etcd:
-	@mkdir -p bin/test
-	curl -L https://storage.googleapis.com/k8s-c10s-test-binaries/etcd-$(shell uname)-x86_64 > bin/test/etcd
-	chmod +x bin/test/etcd
-
-bin/golangci-lint: bin/golangci-lint-${GOLANGCI_VERSION}
-	@ln -sf golangci-lint-${GOLANGCI_VERSION} bin/golangci-lint
-bin/golangci-lint-${GOLANGCI_VERSION}:
-	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | BINARY=golangci-lint bash -s -- v${GOLANGCI_VERSION}
-	@mv bin/golangci-lint $@
-
-.PHONY: lint
-lint: bin/golangci-lint ## Run linter
-	bin/golangci-lint run
-
-.PHONY: fix
-fix: bin/golangci-lint ## Fix lint violations
-	bin/golangci-lint run --fix
-
-.PHONY: docker-image
-docker-image:
-	@sudo docker build -t $(DOCKER_IMAGE) .
-
-.PHONY: proto
-proto: bin/protoc bin/protoc-gen-go
-	@./bin/protoc --go_out=plugins=grpc:. --plugin=protoc-gen-go=./bin/protoc-gen-go api/*.proto
-	@./bin/protoc --go_out=. --plugin=protoc-gen-go=./bin/protoc-gen-go server/internal/*.proto
-
-.PHONY: verify-proto
-verify-proto: proto
-	@./scripts/git-diff
-
-bin/protoc: scripts/get-protoc
-	@./scripts/get-protoc bin/protoc
-
-bin/protoc-gen-go:
-	@go install -v $(REPO_PATH)/vendor/github.com/golang/protobuf/protoc-gen-go
-
-clean:
-	@rm -rf bin/
-
-testall: testrace
-
-FORCE:
-
-.PHONY: test testrace testall
+pull-licenses:
+ifdef LICENSE_PULLER_PATH
+	bash $(LICENSE_PULLER_PATH)
+else
+	mkdir -p licenses
+endif
