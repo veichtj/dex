@@ -1,3 +1,8 @@
+> This repository is a fork. All custom changes are done on `kyma-master` branch.
+>
+> [This document](CONTRIBUTING.md) describes the process of contributing to this repository.
+
+
 # dex - A federated OpenID Connect provider
 
 [![Travis](https://api.travis-ci.org/dexidp/dex.svg)](https://travis-ci.org/dexidp/dex)
