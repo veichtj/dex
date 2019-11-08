@@ -1,8 +1,8 @@
-# Contributing to dex fork
+# Contribution - Dex fork for Kyma
 
 As the git workflow we are using in Kyma differs from the workflow in this repo, this readme contains instructions for some basic operations.
 
-## Prepare a local repository:
+## Prepare a local repository
 
 ```shell script
 # Clone the fork repository
@@ -22,9 +22,7 @@ git branch -u upstream/master
 
 ## Create a pull request
 
-> always check out from `kyma-master` branch
-
-> make sure to choose `kyma-incubator/dex` repository and `kyma-master` branch as the base for your PR
+>**NOTE:** Always check out from the `kyma-master` branch. Chose the `kyma-incubator/dex` repository and the `kyma-master` branch as the base of your PR.
 
 ```shell script
 # fetch recent kyma-master
@@ -64,7 +62,7 @@ Then in the place of `# ... commit changes ...` comment, you should merge the `m
 git merge master
 ```
 
-### To update the remote master branch:
+## Update the remote master branch
 
 >**NOTE:** You must have permissions to push to the `master` branch to complete this operation.
 
