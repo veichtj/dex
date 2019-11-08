@@ -24,6 +24,8 @@ git branch -u upstream/master
 
 > note: always check out from `kyma-master` branch
 
+> make sure to choose `kyma-incubator/dex` repository and `kyma-master` branch as the base for your PR
+
 ```shell script
 # fetch recent kyma-master
 
@@ -40,7 +42,7 @@ git checkout -b <your_branch_name>
 
 git push origin <your_branch_name>
 
-#create a PR from the browser
+# create a PR from the browser
 ```
 
 ## To update kyma-master branch:
