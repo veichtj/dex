@@ -1,6 +1,6 @@
 # Contribution - Dex fork for Kyma
 
-As the git workflow we are using in Kyma differs from the workflow in this repo, this readme contains instructions for some basic operations.
+This readme describes the workflow for basic operations required to contribute to this fork, which is different from the Kyma-flavored Git workflow.  
 
 ## Prepare a local repository
 
@@ -25,7 +25,7 @@ git branch -u upstream/master
 >**NOTE:** Always check out from the `kyma-master` branch. Chose the `kyma-incubator/dex` repository and the `kyma-master` branch as the base of your PR.
 
 ```shell script
-# fetch recent kyma-master
+# Fetch kyma-master
 
 git checkout kyma-master
 git pull origin kyma-master
@@ -34,7 +34,7 @@ git pull origin kyma-master
 
 git checkout -b <your_branch_name>
 
-# ... commit changes ...
+# Commit changes to your branch
 
 # Push your branch
 
