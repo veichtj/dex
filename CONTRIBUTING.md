@@ -2,10 +2,10 @@
 
 As the git workflow we are using in Kyma differs from the workflow in this repo, this readme contains instructions for some basic operations.
 
-## To prepare a local repository:
+## Prepare a local repository:
 
 ```shell script
-# clone fork's repository
+# Clone the fork repository
 
 cd $GOPATH/src/github.com
 mkdir dexidp
@@ -13,14 +13,14 @@ cd dexidp
 git clone https://github.com/kyma-incubator/dex.git
 cd dex
 
-# configure the repository
+# Configure the cloned repository
 
 git remote add upstream https://github.com/dexidp/dex.git
 git fetch upstream
 git branch -u upstream/master
 ```
 
-## To create a PR to the fork:
+## Create a pull request
 
 > always check out from `kyma-master` branch
 
@@ -32,20 +32,20 @@ git branch -u upstream/master
 git checkout kyma-master
 git pull origin kyma-master
 
-# create your branch with changes
+# Create a branch for your changes
 
 git checkout -b <your_branch_name>
 
 # ... commit changes ...
 
-# push your branch
+# Push your branch
 
 git push origin <your_branch_name>
 
-# create a PR from the browser
+# Create a PR through the GitHub UI
 ```
 
-## To update kyma-master branch:
+## Update the kyma-master branch
 
 Update of `kyma-master` branch is mostly based on creating a PR to the fork. The change is that you should update the `master` branch before:
 
@@ -66,6 +66,6 @@ git merge master
 
 ### To update the remote master branch:
 
-> you have to be able to push to `master` branch to complete this operation
+>**NOTE:** You must have permissions to push to the `master` branch to complete this operation.
 
 If you prepared your local repository following the steps above, `git pull` command on `master` branch will fetch changes from the original repository to your local repository. To push it to remote repository simply type `git push origin master`.
