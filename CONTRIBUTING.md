@@ -50,7 +50,7 @@ git push origin <your_branch_name>
 Update of `kyma-master` branch is mostly based on creating a PR to the fork. The change is that you should update the `master` branch before:
 
 ```shell script
-# fetch changes from original repository
+# fetch changes from the original repository
 
 git checkout master
 git pull
@@ -64,8 +64,8 @@ Then in the place of `# ... commit changes ...` comment, you should merge the `m
 git merge master
 ```
 
-### To update remote master branch:
+### To update the remote master branch:
 
 > you have to be able to push to `master` branch to complete this operation
 
-If you prepared your local repository following the steps above, `git pull` command on `master` branch will fetch changes from original repository to your local repository. To push it to remote repository simply type `git push origin master`.
+If you prepared your local repository following the steps above, `git pull` command on `master` branch will fetch changes from the original repository to your local repository. To push it to remote repository simply type `git push origin master`.
