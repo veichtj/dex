@@ -22,7 +22,7 @@ git branch -u upstream/master
 
 ## To create a PR to the fork:
 
-> note: always check out from `kyma-master` branch
+> always check out from `kyma-master` branch
 
 > make sure to choose `kyma-incubator/dex` repository and `kyma-master` branch as the base for your PR
 
@@ -66,6 +66,6 @@ git merge master
 
 ### To update remote master branch:
 
-> note: you have to be able to push to `master` branch to complete this operation
+> you have to be able to push to `master` branch to complete this operation
 
 If you prepared your local repository following the steps above, `git pull` command on `master` branch will fetch changes from original repository to your local repository. To push it to remote repository simply type `git push origin master`.
