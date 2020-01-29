@@ -240,7 +240,7 @@ func (c *xsuaaConnector) HandleCallback(s connector.Scopes, r *http.Request) (id
 }
 
 // Refresh is used to refresh a session with the refresh token provided by the IdP
-func (c *xsuaaConnector) Refresh(ctx context.Context, identity connector.Identity) (connector.Identity, error) {
+func (c *xsuaaConnector) Refresh(ctx context.Context, _ connector.Scopes, identity connector.Identity) (connector.Identity, error) {
 
 	cd := connectorData{}
 	err := json.Unmarshal(identity.ConnectorData, &cd)
