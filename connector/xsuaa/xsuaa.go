@@ -2,7 +2,6 @@ package xsuaa
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -241,13 +240,6 @@ func (c *xsuaaConnector) HandleCallback(s connector.Scopes, r *http.Request) (id
 
 // Refresh is used to refresh a session with the refresh token provided by the IdP
 func (c *xsuaaConnector) Refresh(ctx context.Context, _ connector.Scopes, identity connector.Identity) (connector.Identity, error) {
-
-	cd := connectorData{}
-	err := json.Unmarshal(identity.ConnectorData, &cd)
-	if err != nil {
-		return identity, fmt.Errorf("oidc: failed to unmarshal connector data: %v", err)
-	}
-
 	t := &oauth2.Token{
 		RefreshToken: string(identity.ConnectorData),
 		Expiry:       time.Now().Add(-time.Hour),
