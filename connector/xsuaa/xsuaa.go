@@ -249,7 +249,7 @@ func (c *xsuaaConnector) HandleCallback(_ connector.Scopes, r *http.Request) (id
 func (c *xsuaaConnector) Refresh(ctx context.Context, _ connector.Scopes, identity connector.Identity) (connector.Identity, error) {
 	cd := connectorData{}
 	if err := json.Unmarshal(identity.ConnectorData, &cd); err != nil {
-		return identity, fmt.Errorf("oidc: failed to unmarshal connector data: %v", err)
+		return identity, fmt.Errorf("xsuaa: failed to unmarshal connector data: %v", err)
 	}
 
 	t := &oauth2.Token{
@@ -336,10 +336,10 @@ func (c *xsuaaConnector) createIdentity(ctx context.Context, identity connector.
 	if c.getUserInfo {
 		userInfo, err := c.provider.UserInfo(ctx, oauth2.StaticTokenSource(token))
 		if err != nil {
-			return identity, fmt.Errorf("oidc: error loading userinfo: %v", err)
+			return identity, fmt.Errorf("xsuaa: error loading userinfo: %v", err)
 		}
 		if err := userInfo.Claims(&claims); err != nil {
-			return identity, fmt.Errorf("oidc: failed to decode userinfo claims: %v", err)
+			return identity, fmt.Errorf("xsuaa: failed to decode userinfo claims: %v", err)
 		}
 	}
 
