@@ -1004,15 +1004,8 @@ func (s *Server) handleRefreshToken(w http.ResponseWriter, r *http.Request, clie
 		scopes = requestedScopes
 	}
 
-	s.logger.Info("######SCOPES#####")
-	s.logger.Info(scopes)
-	s.logger.Info("######SCOPES#####")
-
 	var connectorData []byte
 	if session, err := s.storage.GetOfflineSessions(refresh.Claims.UserID, refresh.ConnectorID); err != nil {
-
-		s.logger.Info("Wpadlem w error, linijka 1012")
-
 		if err != storage.ErrNotFound {
 			s.logger.Errorf("failed to get offline session: %v", err)
 			return
@@ -1021,10 +1014,6 @@ func (s *Server) handleRefreshToken(w http.ResponseWriter, r *http.Request, clie
 		// Use the old connector data if it exists, should be deleted once used
 		connectorData = refresh.ConnectorData
 	} else {
-		s.logger.Info("###### USE CONNECTOR DATA FROM SESSION #####")
-		s.logger.Info(session.ConnectorData)
-		s.logger.Info("###### USE CONNECTOR DATA FROM SESSION #####")
-
 		connectorData = session.ConnectorData
 	}
 
@@ -1045,12 +1034,6 @@ func (s *Server) handleRefreshToken(w http.ResponseWriter, r *http.Request, clie
 		Groups:            refresh.Claims.Groups,
 		ConnectorData:     connectorData,
 	}
-
-
-	s.logger.Info("######IDENT#####")
-	s.logger.Info(ident)
-	s.logger.Info(string(ident.ConnectorData))
-	s.logger.Info("######IDENT#####")
 
 	// Can the connector refresh the identity? If so, attempt to refresh the data
 	// in the connector.
