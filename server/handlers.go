@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	oidc "github.com/coreos/go-oidc"
+	"github.com/coreos/go-oidc"
 	"github.com/gorilla/mux"
-	jose "gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2"
 
 	"github.com/dexidp/dex/connector"
 	"github.com/dexidp/dex/server/internal"
@@ -741,10 +741,11 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 			s.logger.Errorf("failed to get client: %v", err)
 			s.tokenErrHelper(w, errServerError, "", http.StatusInternalServerError)
 		} else {
-			s.tokenErrHelper(w, errInvalidClient, "Invalid client credentials.", http.StatusUnauthorized)
+			s.tokenErrHelper(w, errInvalidClient, "DUPSKO Invalid client credentials.", http.StatusUnauthorized)
 		}
 		return
 	}
+
 	if client.Secret != clientSecret {
 		s.tokenErrHelper(w, errInvalidClient, "Invalid client credentials.", http.StatusUnauthorized)
 		return
@@ -946,7 +947,12 @@ func (s *Server) handleRefreshToken(w http.ResponseWriter, r *http.Request, clie
 		token = &internal.RefreshToken{RefreshId: code, Token: ""}
 	}
 
+	s.logger.Info("######REFRESH_ID#####")
+	s.logger.Info(token.RefreshId)
+	s.logger.Info("######REFRESH_ID#####")
+
 	refresh, err := s.storage.GetRefresh(token.RefreshId)
+
 	if err != nil {
 		s.logger.Errorf("failed to get refresh token: %v", err)
 		if err == storage.ErrNotFound {
@@ -998,8 +1004,15 @@ func (s *Server) handleRefreshToken(w http.ResponseWriter, r *http.Request, clie
 		scopes = requestedScopes
 	}
 
+	s.logger.Info("######SCOPES#####")
+	s.logger.Info(scopes)
+	s.logger.Info("######SCOPES#####")
+
 	var connectorData []byte
 	if session, err := s.storage.GetOfflineSessions(refresh.Claims.UserID, refresh.ConnectorID); err != nil {
+
+		s.logger.Info("Wpadlem w error, linijka 1012")
+
 		if err != storage.ErrNotFound {
 			s.logger.Errorf("failed to get offline session: %v", err)
 			return
@@ -1008,8 +1021,14 @@ func (s *Server) handleRefreshToken(w http.ResponseWriter, r *http.Request, clie
 		// Use the old connector data if it exists, should be deleted once used
 		connectorData = refresh.ConnectorData
 	} else {
+		s.logger.Info("###### USE CONNECTOR DATA FROM SESSION #####")
+		s.logger.Info(session.ConnectorData)
+		s.logger.Info("###### USE CONNECTOR DATA FROM SESSION #####")
+
 		connectorData = session.ConnectorData
 	}
+
+	s.logger.Info(string(connectorData))
 
 	conn, err := s.getConnector(refresh.ConnectorID)
 	if err != nil {
@@ -1026,6 +1045,12 @@ func (s *Server) handleRefreshToken(w http.ResponseWriter, r *http.Request, clie
 		Groups:            refresh.Claims.Groups,
 		ConnectorData:     connectorData,
 	}
+
+
+	s.logger.Info("######IDENT#####")
+	s.logger.Info(ident)
+	s.logger.Info(string(ident.ConnectorData))
+	s.logger.Info("######IDENT#####")
 
 	// Can the connector refresh the identity? If so, attempt to refresh the data
 	// in the connector.

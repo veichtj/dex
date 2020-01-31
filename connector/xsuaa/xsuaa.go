@@ -64,11 +64,6 @@ var brokenAuthHeaderDomains = []string{
 	"oktapreview.com",
 }
 
-// connectorData stores information for sessions authenticated by this connector
-type connectorData struct {
-	RefreshToken []byte
-}
-
 // Detect auth header provider issues for known providers. This lets users
 // avoid having to explicitly set "basicAuthUnsupported" in their config.
 //
@@ -235,11 +230,11 @@ func (c *xsuaaConnector) HandleCallback(s connector.Scopes, r *http.Request) (id
 		return identity, fmt.Errorf("xsuaa: failed to get token: %v", err)
 	}
 
-	return c.createIdentity(r.Context(), identity, token)
+	return c.createIdentity(r.Context(), identity, s, token)
 }
 
 // Refresh is used to refresh a session with the refresh token provided by the IdP
-func (c *xsuaaConnector) Refresh(ctx context.Context, _ connector.Scopes, identity connector.Identity) (connector.Identity, error) {
+func (c *xsuaaConnector) Refresh(ctx context.Context, s connector.Scopes, identity connector.Identity) (connector.Identity, error) {
 	t := &oauth2.Token{
 		RefreshToken: string(identity.ConnectorData),
 		Expiry:       time.Now().Add(-time.Hour),
@@ -249,10 +244,10 @@ func (c *xsuaaConnector) Refresh(ctx context.Context, _ connector.Scopes, identi
 		return identity, fmt.Errorf("xsuaa: failed to get token: %v", err)
 	}
 
-	return c.createIdentity(ctx, identity, token)
+	return c.createIdentity(ctx, identity, s, token)
 }
 
-func (c *xsuaaConnector) createIdentity(ctx context.Context, identity connector.Identity, token *oauth2.Token) (connector.Identity, error) {
+func (c *xsuaaConnector) createIdentity(ctx context.Context, identity connector.Identity, s connector.Scopes, token *oauth2.Token) (connector.Identity, error) {
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
 		return identity, errors.New("xsuaa: no id_token in token response")
