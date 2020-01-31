@@ -246,7 +246,7 @@ func (c *xsuaaConnector) HandleCallback(s connector.Scopes, r *http.Request) (id
 }
 
 // Refresh is used to refresh a session with the refresh token provided by the IdP
-func (c *xsuaaConnector) Refresh(ctx context.Context, s connector.Scopes, identity connector.Identity) (connector.Identity, error) {
+func (c *xsuaaConnector) Refresh(ctx context.Context, _ connector.Scopes, identity connector.Identity) (connector.Identity, error) {
 	cd := connectorData{}
 	if err := json.Unmarshal(identity.ConnectorData, &cd); err != nil {
 		return identity, fmt.Errorf("oidc: failed to unmarshal connector data: %v", err)
@@ -265,7 +265,7 @@ func (c *xsuaaConnector) Refresh(ctx context.Context, s connector.Scopes, identi
 	return c.createIdentity(ctx, identity, s, token)
 }
 
-func (c *xsuaaConnector) createIdentity(ctx context.Context, identity connector.Identity, s connector.Scopes, token *oauth2.Token) (connector.Identity, error) {
+func (c *xsuaaConnector) createIdentity(ctx context.Context, identity connector.Identity, _ connector.Scopes, token *oauth2.Token) (connector.Identity, error) {
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
 		return identity, errors.New("xsuaa: no id_token in token response")

@@ -745,7 +745,6 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	if client.Secret != clientSecret {
 		s.tokenErrHelper(w, errInvalidClient, "Invalid client credentials.", http.StatusUnauthorized)
 		return
