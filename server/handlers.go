@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/go-oidc"
+	oidc "github.com/coreos/go-oidc"
 	"github.com/gorilla/mux"
-	"gopkg.in/square/go-jose.v2"
+	jose "gopkg.in/square/go-jose.v2"
 
 	"github.com/dexidp/dex/connector"
 	"github.com/dexidp/dex/server/internal"
@@ -741,7 +741,7 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 			s.logger.Errorf("failed to get client: %v", err)
 			s.tokenErrHelper(w, errServerError, "", http.StatusInternalServerError)
 		} else {
-			s.tokenErrHelper(w, errInvalidClient, "DUPSKO Invalid client credentials.", http.StatusUnauthorized)
+			s.tokenErrHelper(w, errInvalidClient, "Invalid client credentials.", http.StatusUnauthorized)
 		}
 		return
 	}
@@ -947,12 +947,7 @@ func (s *Server) handleRefreshToken(w http.ResponseWriter, r *http.Request, clie
 		token = &internal.RefreshToken{RefreshId: code, Token: ""}
 	}
 
-	s.logger.Info("######REFRESH_ID#####")
-	s.logger.Info(token.RefreshId)
-	s.logger.Info("######REFRESH_ID#####")
-
 	refresh, err := s.storage.GetRefresh(token.RefreshId)
-
 	if err != nil {
 		s.logger.Errorf("failed to get refresh token: %v", err)
 		if err == storage.ErrNotFound {
@@ -1016,8 +1011,6 @@ func (s *Server) handleRefreshToken(w http.ResponseWriter, r *http.Request, clie
 	} else {
 		connectorData = session.ConnectorData
 	}
-
-	s.logger.Info(string(connectorData))
 
 	conn, err := s.getConnector(refresh.ConnectorID)
 	if err != nil {
