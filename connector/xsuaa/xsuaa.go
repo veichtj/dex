@@ -232,7 +232,7 @@ func (e *oauth2Error) Error() string {
 	return e.error + ": " + e.errorDescription
 }
 
-func (c *xsuaaConnector) HandleCallback(s connector.Scopes, r *http.Request) (identity connector.Identity, err error) {
+func (c *xsuaaConnector) HandleCallback(_ connector.Scopes, r *http.Request) (identity connector.Identity, err error) {
 	q := r.URL.Query()
 	if errType := q.Get("error"); errType != "" {
 		return identity, &oauth2Error{errType, q.Get("error_description")}
@@ -242,7 +242,7 @@ func (c *xsuaaConnector) HandleCallback(s connector.Scopes, r *http.Request) (id
 		return identity, fmt.Errorf("xsuaa: failed to get token: %v", err)
 	}
 
-	return c.createIdentity(r.Context(), identity, s, token)
+	return c.createIdentity(r.Context(), identity, token)
 }
 
 // Refresh is used to refresh a session with the refresh token provided by the IdP
@@ -262,10 +262,10 @@ func (c *xsuaaConnector) Refresh(ctx context.Context, _ connector.Scopes, identi
 		return identity, fmt.Errorf("xsuaa: failed to get token: %v", err)
 	}
 
-	return c.createIdentity(ctx, identity, s, token)
+	return c.createIdentity(ctx, identity, token)
 }
 
-func (c *xsuaaConnector) createIdentity(ctx context.Context, identity connector.Identity, _ connector.Scopes, token *oauth2.Token) (connector.Identity, error) {
+func (c *xsuaaConnector) createIdentity(ctx context.Context, identity connector.Identity, token *oauth2.Token) (connector.Identity, error) {
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
 		return identity, errors.New("xsuaa: no id_token in token response")
