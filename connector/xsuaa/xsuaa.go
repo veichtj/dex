@@ -2,12 +2,14 @@ package xsuaa
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/coreos/go-oidc"
 	"golang.org/x/oauth2"
@@ -40,6 +42,9 @@ type Config struct {
 	// Override the value of email_verifed to true in the returned claims
 	InsecureSkipEmailVerified bool `json:"insecureSkipEmailVerified"`
 
+	// InsecureEnableGroups enables groups claims. This is disabled by default until https://github.com/dexidp/dex/issues/1065 is resolved
+	InsecureEnableGroups bool `json:"insecureEnableGroups"`
+
 	// GetUserInfo uses the userinfo endpoint to get additional claims for
 	// the token. This is especially useful where upstreams return "thin"
 	// id tokens
@@ -58,6 +63,11 @@ var brokenAuthHeaderDomains = []string{
 	// See: https://github.com/dexidp/dex/issues/859
 	"okta.com",
 	"oktapreview.com",
+}
+
+// connectorData stores information for sessions authenticated by this connector
+type connectorData struct {
+	RefreshToken []byte
 }
 
 // Detect auth header provider issues for known providers. This lets users
@@ -134,6 +144,7 @@ func (c *Config) Open(id string, logger log.Logger) (conn connector.Connector, e
 		cancel:                    cancel,
 		hostedDomains:             c.HostedDomains,
 		insecureSkipEmailVerified: c.InsecureSkipEmailVerified,
+		insecureEnableGroups:      c.InsecureEnableGroups,
 		getUserInfo:               c.GetUserInfo,
 		userIDKey:                 c.UserIDKey,
 		userNameKey:               *c.UserNameKey,
@@ -160,6 +171,7 @@ type xsuaaConnector struct {
 	logger                    log.Logger
 	hostedDomains             []string
 	insecureSkipEmailVerified bool
+	insecureEnableGroups      bool
 	getUserInfo               bool
 	userIDKey                 string
 	userNameKey               string
@@ -192,14 +204,20 @@ func (c *xsuaaConnector) LoginURL(s connector.Scopes, callbackURL, state string)
 		return "", fmt.Errorf("expected callback URL %q did not match the URL in the config %q", callbackURL, c.redirectURI)
 	}
 
+	var opts []oauth2.AuthCodeOption
 	if len(c.hostedDomains) > 0 {
 		preferredDomain := c.hostedDomains[0]
 		if len(c.hostedDomains) > 1 {
 			preferredDomain = "*"
 		}
-		return c.oauth2Config.AuthCodeURL(state, oauth2.SetAuthURLParam("hd", preferredDomain)), nil
+		opts = append(opts, oauth2.SetAuthURLParam("hd", preferredDomain))
 	}
-	return c.oauth2Config.AuthCodeURL(state), nil
+
+	if s.OfflineAccess {
+		opts = append(opts, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("prompt", "consent"))
+	}
+
+	return c.oauth2Config.AuthCodeURL(state, opts...), nil
 }
 
 type oauth2Error struct {
@@ -214,7 +232,7 @@ func (e *oauth2Error) Error() string {
 	return e.error + ": " + e.errorDescription
 }
 
-func (c *xsuaaConnector) HandleCallback(s connector.Scopes, r *http.Request) (identity connector.Identity, err error) {
+func (c *xsuaaConnector) HandleCallback(_ connector.Scopes, r *http.Request) (identity connector.Identity, err error) {
 	q := r.URL.Query()
 	if errType := q.Get("error"); errType != "" {
 		return identity, &oauth2Error{errType, q.Get("error_description")}
@@ -224,17 +242,41 @@ func (c *xsuaaConnector) HandleCallback(s connector.Scopes, r *http.Request) (id
 		return identity, fmt.Errorf("xsuaa: failed to get token: %v", err)
 	}
 
+	return c.createIdentity(r.Context(), identity, token)
+}
+
+// Refresh is used to refresh a session with the refresh token provided by the IdP
+func (c *xsuaaConnector) Refresh(ctx context.Context, _ connector.Scopes, identity connector.Identity) (connector.Identity, error) {
+	cd := connectorData{}
+	if err := json.Unmarshal(identity.ConnectorData, &cd); err != nil {
+		return identity, fmt.Errorf("xsuaa: failed to unmarshal connector data: %v", err)
+	}
+
+	t := &oauth2.Token{
+		RefreshToken: string(cd.RefreshToken),
+		Expiry:       time.Now().Add(-time.Hour),
+	}
+
+	token, err := c.oauth2Config.TokenSource(ctx, t).Token()
+	if err != nil {
+		return identity, fmt.Errorf("xsuaa: failed to get token: %v", err)
+	}
+
+	return c.createIdentity(ctx, identity, token)
+}
+
+func (c *xsuaaConnector) createIdentity(ctx context.Context, identity connector.Identity, token *oauth2.Token) (connector.Identity, error) {
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
 		return identity, errors.New("xsuaa: no id_token in token response")
 	}
 
-	idToken, err := c.verifier.Verify(r.Context(), rawIDToken)
+	idToken, err := c.verifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		return identity, fmt.Errorf("xsuaa: failed to verify ID Token: %v", err)
 	}
 
-	accessToken, err := c.verifier.Verify(r.Context(), token.AccessToken)
+	accessToken, err := c.verifier.Verify(ctx, token.AccessToken)
 
 	if err != nil {
 		return identity, fmt.Errorf("xsuaa: failed to verify access_token :%v", err)
@@ -292,12 +334,12 @@ func (c *xsuaaConnector) HandleCallback(s connector.Scopes, r *http.Request) (id
 	}
 
 	if c.getUserInfo {
-		userInfo, err := c.provider.UserInfo(r.Context(), oauth2.StaticTokenSource(token))
+		userInfo, err := c.provider.UserInfo(ctx, oauth2.StaticTokenSource(token))
 		if err != nil {
-			return identity, fmt.Errorf("oidc: error loading userinfo: %v", err)
+			return identity, fmt.Errorf("xsuaa: error loading userinfo: %v", err)
 		}
 		if err := userInfo.Claims(&claims); err != nil {
-			return identity, fmt.Errorf("oidc: failed to decode userinfo claims: %v", err)
+			return identity, fmt.Errorf("xsuaa: failed to decode userinfo claims: %v", err)
 		}
 	}
 
@@ -310,11 +352,21 @@ func (c *xsuaaConnector) HandleCallback(s connector.Scopes, r *http.Request) (id
 	userGroups := filterUserGroups(scp.Scopes, c.appName)
 	userGroups = append(userGroups, fmt.Sprintf("tenantID=%s", tenantID))
 
+	cd := connectorData{
+		RefreshToken: []byte(token.RefreshToken),
+	}
+
+	connData, err := json.Marshal(&cd)
+	if err != nil {
+		return identity, fmt.Errorf("xsuaa: failed to encode connector data: %v", err)
+	}
+
 	identity = connector.Identity{
 		UserID:        accessToken.Subject,
 		Username:      name,
 		Email:         email,
 		EmailVerified: emailVerified,
+		ConnectorData: connData,
 		Groups:        userGroups,
 	}
 
@@ -326,10 +378,18 @@ func (c *xsuaaConnector) HandleCallback(s connector.Scopes, r *http.Request) (id
 		identity.UserID = userID
 	}
 
-	return identity, nil
-}
+	if c.insecureEnableGroups {
+		vs, ok := claims["groups"].([]interface{})
+		if ok {
+			for _, v := range vs {
+				if s, ok := v.(string); ok {
+					identity.Groups = append(identity.Groups, s)
+				} else {
+					return identity, errors.New("malformed \"groups\" claim")
+				}
+			}
+		}
+	}
 
-// Refresh is implemented for backwards compatibility, even though it's a no-op.
-func (c *xsuaaConnector) Refresh(ctx context.Context, s connector.Scopes, identity connector.Identity) (connector.Identity, error) {
 	return identity, nil
 }
