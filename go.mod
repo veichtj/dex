@@ -29,6 +29,7 @@ require (
 	github.com/kylelemons/godebug v1.1.0
 	github.com/lib/pq v1.2.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
+	github.com/microcosm-cc/bluemonday v1.0.2
 	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
 	github.com/prometheus/client_golang v1.0.0
 	github.com/prometheus/common v0.6.0 // indirect

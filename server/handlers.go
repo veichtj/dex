@@ -285,8 +285,9 @@ func (s *Server) handleConnectorLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authReqID := r.FormValue("req")
+	authReqIDSanitized := s.HTMLContentSanitizer.Sanitize(authReqID)
 
-	authReq, err := s.storage.GetAuthRequest(authReqID)
+	authReq, err := s.storage.GetAuthRequest(authReqIDSanitized)
 	if err != nil {
 		s.logger.Errorf("Failed to get auth request: %v", err)
 		if err == storage.ErrNotFound {
@@ -303,7 +304,7 @@ func (s *Server) handleConnectorLogin(w http.ResponseWriter, r *http.Request) {
 			a.ConnectorID = connID
 			return a, nil
 		}
-		if err := s.storage.UpdateAuthRequest(authReqID, updater); err != nil {
+		if err := s.storage.UpdateAuthRequest(authReqIDSanitized, updater); err != nil {
 			s.logger.Errorf("Failed to set connector ID on auth request: %v", err)
 			s.renderError(r, w, http.StatusInternalServerError, "Database error.")
 			return
@@ -320,7 +321,7 @@ func (s *Server) handleConnectorLogin(w http.ResponseWriter, r *http.Request) {
 			// Use the auth request ID as the "state" token.
 			//
 			// TODO(ericchiang): Is this appropriate or should we also be using a nonce?
-			callbackURL, err := conn.LoginURL(scopes, s.absURL("/callback"), authReqID)
+			callbackURL, err := conn.LoginURL(scopes, s.absURL("/callback"), authReqIDSanitized)
 			if err != nil {
 				s.logger.Errorf("Connector %q returned error when creating callback: %v", connID, err)
 				s.renderError(r, w, http.StatusInternalServerError, "Login error.")
@@ -332,13 +333,12 @@ func (s *Server) handleConnectorLogin(w http.ResponseWriter, r *http.Request) {
 				s.logger.Errorf("Server template error: %v", err)
 			}
 		case connector.SAMLConnector:
-			action, value, err := conn.POSTData(scopes, authReqID)
+			action, value, err := conn.POSTData(scopes, authReqIDSanitized)
 			if err != nil {
 				s.logger.Errorf("Creating SAML data: %v", err)
 				s.renderError(r, w, http.StatusInternalServerError, "Connector Login Error")
 				return
 			}
-
 			// TODO(ericchiang): Don't inline this.
 			fmt.Fprintf(w, `<!DOCTYPE html>
 			  <html lang="en">
@@ -355,7 +355,7 @@ func (s *Server) handleConnectorLogin(w http.ResponseWriter, r *http.Request) {
 				    document.forms[0].submit();
 				</script>
 			  </body>
-			  </html>`, action, value, authReqID)
+			  </html>`, action, value, authReqIDSanitized)
 		default:
 			s.renderError(r, w, http.StatusBadRequest, "Requested resource does not exist.")
 		}

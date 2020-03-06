@@ -37,6 +37,7 @@ import (
 	"github.com/dexidp/dex/connector/saml"
 	"github.com/dexidp/dex/pkg/log"
 	"github.com/dexidp/dex/storage"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 // LocalConnector is the local passwordDB connector which is an internal
@@ -154,6 +155,8 @@ type Server struct {
 	authRequestsValidFor time.Duration
 
 	logger log.Logger
+
+	HTMLContentSanitizer *bluemonday.Policy
 }
 
 // NewServer constructs a server from the provided config.
@@ -206,6 +209,9 @@ func newServer(ctx context.Context, c Config, rotationStrategy rotationStrategy)
 		now = time.Now
 	}
 
+	// this policy will effectively strip all HTML elements and their attributes from a document
+	sanitizer := bluemonday.StrictPolicy()
+
 	s := &Server{
 		issuerURL:              *issuerURL,
 		connectors:             make(map[string]Connector),
@@ -218,6 +224,7 @@ func newServer(ctx context.Context, c Config, rotationStrategy rotationStrategy)
 		now:                    now,
 		templates:              tmpls,
 		logger:                 c.Logger,
+		HTMLContentSanitizer:   sanitizer,
 	}
 
 	// Retrieves connector objects in backend storage. This list includes the static connectors
