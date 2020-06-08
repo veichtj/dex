@@ -13,7 +13,7 @@ RUN go mod tidy -v
 RUN go mod verify
 RUN go build -v -o ${BASE_DIR}/bin/dex ${BASE_DIR}/cmd/dex
 
-FROM alpine:3.11.5
+FROM alpine:3.11.6
 
 ENV BASE_DIR /go/src/github.com/dexidp/dex
 LABEL source=git@github.com:kyma-incubator/dex.git
