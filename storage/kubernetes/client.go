@@ -298,7 +298,7 @@ func newClient(cluster k8sapi.Cluster, user k8sapi.AuthInfo, namespace string, l
 			KeepAlive: 30 * time.Second,
 		}).Dial,
 		TLSClientConfig:       tlsConfig,
-		TLSHandshakeTimeout:   10 * time.Second,
+		TLSHandshakeTimeout:   20 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 
@@ -335,7 +335,7 @@ func newClient(cluster k8sapi.Cluster, user k8sapi.AuthInfo, namespace string, l
 	return &client{
 		client: &http.Client{
 			Transport: t,
-			Timeout:   15 * time.Second,
+			Timeout:   35 * time.Second,
 		},
 		baseURL:    cluster.Server,
 		hash:       func() hash.Hash { return fnv.New64() },
