@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
-	"github.com/dexidp/dex/api"
+	"github.com/dexidp/dex/api/v2"
 	"github.com/dexidp/dex/pkg/log"
 	"github.com/dexidp/dex/server/internal"
 	"github.com/dexidp/dex/storage"
@@ -291,7 +291,7 @@ func TestRefreshToken(t *testing.T) {
 		t.Errorf("failed to marshal offline session ID: %v", err)
 	}
 
-	//Testing the api.
+	// Testing the api.
 	listReq := api.ListRefreshReq{
 		UserId: subjectString,
 	}
