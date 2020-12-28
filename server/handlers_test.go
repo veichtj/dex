@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/dexidp/dex/storage"
 	"github.com/dexidp/dex/storage/memory"
@@ -139,6 +140,7 @@ func TestConnectorLoginDoesNotAllowToChangeConnectorForAuthRequest(t *testing.T)
 		supportedResponseTypes: map[string]bool{"code": true},
 		now:                    time.Now,
 		connectors:             make(map[string]Connector),
+		HTMLContentSanitizer:   bluemonday.StrictPolicy(),
 	}
 
 	r := mux.NewRouter()
