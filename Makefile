@@ -51,8 +51,21 @@ release: test vet check-fmt build-image push-image
 MOUNT_TARGETS = test vet check-fmt fmt fix-fmt
 $(foreach t,$(MOUNT_TARGETS),$(eval $(call buildpack-mount,$(t))))
 
-test-local:
+test-local: bin/test/kube-apiserver-local bin/test/etcd-local
 	go test -v ./...
+
+export TEST_ASSET_KUBE_APISERVER=$(abspath bin/test/kube-apiserver)
+export TEST_ASSET_ETCD=$(abspath bin/test/etcd)
+
+bin/test/kube-apiserver-local:
+	@mkdir -p bin/test
+	curl -L https://storage.googleapis.com/k8s-c10s-test-binaries/kube-apiserver-$(shell uname)-x86_64 > bin/test/kube-apiserver
+	chmod +x bin/test/kube-apiserver
+
+bin/test/etcd-local:
+	@mkdir -p bin/test
+	curl -L https://storage.googleapis.com/k8s-c10s-test-binaries/etcd-$(shell uname)-x86_64 > bin/test/etcd
+	chmod +x bin/test/etcd
 
 vet-local:
 	go vet $$($(DIRS_TO_CHECK))

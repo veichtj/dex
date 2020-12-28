@@ -3,7 +3,7 @@ FROM golang:1.15.6-alpine3.12 as builder
 ENV BASE_DIR /go/src/github.com/dexidp/dex
 ENV GO111MODULE on
 
-RUN apk add --update git gcc libc-dev
+RUN apk add --update git gcc libc-dev alpine-sdk
 
 WORKDIR ${BASE_DIR}
 
