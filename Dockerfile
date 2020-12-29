@@ -1,9 +1,9 @@
-FROM golang:1.13-alpine as builder
+FROM golang:1.15.6-alpine3.12 as builder
 
 ENV BASE_DIR /go/src/github.com/dexidp/dex
 ENV GO111MODULE on
 
-RUN apk add --update git gcc libc-dev
+RUN apk add --update git gcc libc-dev alpine-sdk
 
 WORKDIR ${BASE_DIR}
 
@@ -13,7 +13,7 @@ RUN go mod tidy -v
 RUN go mod verify
 RUN go build -v -o ${BASE_DIR}/bin/dex ${BASE_DIR}/cmd/dex
 
-FROM alpine:3.11.6
+FROM alpine:3.12
 
 ENV BASE_DIR /go/src/github.com/dexidp/dex
 LABEL source=git@github.com:kyma-incubator/dex.git

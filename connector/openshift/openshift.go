@@ -12,13 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/oauth2"
+
 	"github.com/dexidp/dex/connector"
 	"github.com/dexidp/dex/pkg/groups"
 	"github.com/dexidp/dex/pkg/log"
-
 	"github.com/dexidp/dex/storage/kubernetes/k8sapi"
-
-	"golang.org/x/oauth2"
 )
 
 // Config holds configuration options for OpenShift login
@@ -32,9 +31,7 @@ type Config struct {
 	RootCA       string   `json:"rootCA"`
 }
 
-var (
-	_ connector.CallbackConnector = (*openshiftConnector)(nil)
-)
+var _ connector.CallbackConnector = (*openshiftConnector)(nil)
 
 type openshiftConnector struct {
 	apiURL       string
@@ -89,7 +86,6 @@ func (c *Config) Open(id string, logger log.Logger) (conn connector.Connector, e
 	}
 
 	resp, err := openshiftConnector.httpClient.Do(req.WithContext(ctx))
-
 	if err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to query OpenShift endpoint %v", err)
@@ -160,7 +156,6 @@ func (c *openshiftConnector) HandleCallback(s connector.Scopes, r *http.Request)
 	client := c.oauth2Config.Client(ctx, token)
 
 	user, err := c.user(ctx, client)
-
 	if err != nil {
 		return identity, fmt.Errorf("openshift: get user: %v", err)
 	}
@@ -177,6 +172,7 @@ func (c *openshiftConnector) HandleCallback(s connector.Scopes, r *http.Request)
 		UserID:            user.UID,
 		Username:          user.Name,
 		PreferredUsername: user.Name,
+		Email:             user.Name,
 		Groups:            user.Groups,
 	}
 
@@ -226,7 +222,7 @@ func newHTTPClient(insecureCA bool, rootCA string) (*http.Client, error) {
 	if insecureCA {
 		tlsConfig = tls.Config{InsecureSkipVerify: true}
 	} else if rootCA != "" {
-		tlsConfig := tls.Config{RootCAs: x509.NewCertPool()}
+		tlsConfig = tls.Config{RootCAs: x509.NewCertPool()}
 		rootCABytes, err := ioutil.ReadFile(rootCA)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read root-ca: %v", err)

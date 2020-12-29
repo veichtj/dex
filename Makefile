@@ -3,7 +3,7 @@ APP_NAME = dex
 BASE_PKG := github.com/kyma-incubator/dex
 # IMG_GOPATH is a path to go path in the container
 IMG_GOPATH := /go
-BUILDPACK = eu.gcr.io/kyma-project/test-infra/buildpack-golang-toolbox:v20190913-65b55d1
+BUILDPACK = eu.gcr.io/kyma-project/test-infra/buildpack-golang-toolbox:v20201208-f3aa8f74
 
 IMG_NAME := $(DOCKER_PUSH_REPOSITORY)$(DOCKER_PUSH_DIRECTORY)/$(APP_NAME)
 TAG := $(DOCKER_TAG)

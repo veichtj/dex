@@ -143,6 +143,36 @@ var customResourceDefinitions = []k8sapi.CustomResourceDefinition{
 			},
 		},
 	},
+	{
+		ObjectMeta: k8sapi.ObjectMeta{
+			Name: "devicerequests.dex.coreos.com",
+		},
+		TypeMeta: crdMeta,
+		Spec: k8sapi.CustomResourceDefinitionSpec{
+			Group:   apiGroup,
+			Version: "v1",
+			Names: k8sapi.CustomResourceDefinitionNames{
+				Plural:   "devicerequests",
+				Singular: "devicerequest",
+				Kind:     "DeviceRequest",
+			},
+		},
+	},
+	{
+		ObjectMeta: k8sapi.ObjectMeta{
+			Name: "devicetokens.dex.coreos.com",
+		},
+		TypeMeta: crdMeta,
+		Spec: k8sapi.CustomResourceDefinitionSpec{
+			Group:   apiGroup,
+			Version: "v1",
+			Names: k8sapi.CustomResourceDefinitionNames{
+				Plural:   "devicetokens",
+				Singular: "devicetoken",
+				Kind:     "DeviceToken",
+			},
+		},
+	},
 }
 
 // There will only ever be a single keys resource. Maintain this by setting a
@@ -269,6 +299,9 @@ type AuthRequest struct {
 	ConnectorData []byte `json:"connectorData,omitempty"`
 
 	Expiry time.Time `json:"expiry"`
+
+	CodeChallenge       string `json:"code_challenge,omitempty"`
+	CodeChallengeMethod string `json:"code_challenge_method,omitempty"`
 }
 
 // AuthRequestList is a list of AuthRequests.
@@ -293,6 +326,10 @@ func toStorageAuthRequest(req AuthRequest) storage.AuthRequest {
 		ConnectorData:       req.ConnectorData,
 		Expiry:              req.Expiry,
 		Claims:              toStorageClaims(req.Claims),
+		PKCE: storage.PKCE{
+			CodeChallenge:       req.CodeChallenge,
+			CodeChallengeMethod: req.CodeChallengeMethod,
+		},
 	}
 	return a
 }
@@ -319,6 +356,8 @@ func (cli *client) fromStorageAuthRequest(a storage.AuthRequest) AuthRequest {
 		ConnectorData:       a.ConnectorData,
 		Expiry:              a.Expiry,
 		Claims:              fromStorageClaims(a.Claims),
+		CodeChallenge:       a.PKCE.CodeChallenge,
+		CodeChallengeMethod: a.PKCE.CodeChallengeMethod,
 	}
 	return req
 }
@@ -392,6 +431,9 @@ type AuthCode struct {
 	ConnectorData []byte `json:"connectorData,omitempty"`
 
 	Expiry time.Time `json:"expiry"`
+
+	CodeChallenge       string `json:"code_challenge,omitempty"`
+	CodeChallengeMethod string `json:"code_challenge_method,omitempty"`
 }
 
 // AuthCodeList is a list of AuthCodes.
@@ -411,14 +453,16 @@ func (cli *client) fromStorageAuthCode(a storage.AuthCode) AuthCode {
 			Name:      a.ID,
 			Namespace: cli.namespace,
 		},
-		ClientID:      a.ClientID,
-		RedirectURI:   a.RedirectURI,
-		ConnectorID:   a.ConnectorID,
-		ConnectorData: a.ConnectorData,
-		Nonce:         a.Nonce,
-		Scopes:        a.Scopes,
-		Claims:        fromStorageClaims(a.Claims),
-		Expiry:        a.Expiry,
+		ClientID:            a.ClientID,
+		RedirectURI:         a.RedirectURI,
+		ConnectorID:         a.ConnectorID,
+		ConnectorData:       a.ConnectorData,
+		Nonce:               a.Nonce,
+		Scopes:              a.Scopes,
+		Claims:              fromStorageClaims(a.Claims),
+		Expiry:              a.Expiry,
+		CodeChallenge:       a.PKCE.CodeChallenge,
+		CodeChallengeMethod: a.PKCE.CodeChallengeMethod,
 	}
 }
 
@@ -433,6 +477,10 @@ func toStorageAuthCode(a AuthCode) storage.AuthCode {
 		Scopes:        a.Scopes,
 		Claims:        toStorageClaims(a.Claims),
 		Expiry:        a.Expiry,
+		PKCE: storage.PKCE{
+			CodeChallenge:       a.CodeChallenge,
+			CodeChallengeMethod: a.CodeChallengeMethod,
+		},
 	}
 }
 
@@ -595,10 +643,9 @@ type Connector struct {
 	k8sapi.TypeMeta   `json:",inline"`
 	k8sapi.ObjectMeta `json:"metadata,omitempty"`
 
-	ID              string `json:"id,omitempty"`
-	Type            string `json:"type,omitempty"`
-	Name            string `json:"name,omitempty"`
-	ResourceVersion string `json:"resourceVersion,omitempty"`
+	ID   string `json:"id,omitempty"`
+	Type string `json:"type,omitempty"`
+	Name string `json:"name,omitempty"`
 	// Config holds connector specific configuration information
 	Config []byte `json:"config,omitempty"`
 }
@@ -613,11 +660,10 @@ func (cli *client) fromStorageConnector(c storage.Connector) Connector {
 			Name:      c.ID,
 			Namespace: cli.namespace,
 		},
-		ID:              c.ID,
-		Type:            c.Type,
-		Name:            c.Name,
-		ResourceVersion: c.ResourceVersion,
-		Config:          c.Config,
+		ID:     c.ID,
+		Type:   c.Type,
+		Name:   c.Name,
+		Config: c.Config,
 	}
 }
 
@@ -626,7 +672,7 @@ func toStorageConnector(c Connector) storage.Connector {
 		ID:              c.ID,
 		Type:            c.Type,
 		Name:            c.Name,
-		ResourceVersion: c.ResourceVersion,
+		ResourceVersion: c.ObjectMeta.ResourceVersion,
 		Config:          c.Config,
 	}
 }
@@ -636,4 +682,104 @@ type ConnectorList struct {
 	k8sapi.TypeMeta `json:",inline"`
 	k8sapi.ListMeta `json:"metadata,omitempty"`
 	Connectors      []Connector `json:"items"`
+}
+
+// DeviceRequest is a mirrored struct from storage with JSON struct tags and
+// Kubernetes type metadata.
+type DeviceRequest struct {
+	k8sapi.TypeMeta   `json:",inline"`
+	k8sapi.ObjectMeta `json:"metadata,omitempty"`
+
+	DeviceCode   string    `json:"device_code,omitempty"`
+	ClientID     string    `json:"client_id,omitempty"`
+	ClientSecret string    `json:"client_secret,omitempty"`
+	Scopes       []string  `json:"scopes,omitempty"`
+	Expiry       time.Time `json:"expiry"`
+}
+
+// DeviceRequestList is a list of DeviceRequests.
+type DeviceRequestList struct {
+	k8sapi.TypeMeta `json:",inline"`
+	k8sapi.ListMeta `json:"metadata,omitempty"`
+	DeviceRequests  []DeviceRequest `json:"items"`
+}
+
+func (cli *client) fromStorageDeviceRequest(a storage.DeviceRequest) DeviceRequest {
+	req := DeviceRequest{
+		TypeMeta: k8sapi.TypeMeta{
+			Kind:       kindDeviceRequest,
+			APIVersion: cli.apiVersion,
+		},
+		ObjectMeta: k8sapi.ObjectMeta{
+			Name:      strings.ToLower(a.UserCode),
+			Namespace: cli.namespace,
+		},
+		DeviceCode:   a.DeviceCode,
+		ClientID:     a.ClientID,
+		ClientSecret: a.ClientSecret,
+		Scopes:       a.Scopes,
+		Expiry:       a.Expiry,
+	}
+	return req
+}
+
+func toStorageDeviceRequest(req DeviceRequest) storage.DeviceRequest {
+	return storage.DeviceRequest{
+		UserCode:     strings.ToUpper(req.ObjectMeta.Name),
+		DeviceCode:   req.DeviceCode,
+		ClientID:     req.ClientID,
+		ClientSecret: req.ClientSecret,
+		Scopes:       req.Scopes,
+		Expiry:       req.Expiry,
+	}
+}
+
+// DeviceToken is a mirrored struct from storage with JSON struct tags and
+// Kubernetes type metadata.
+type DeviceToken struct {
+	k8sapi.TypeMeta   `json:",inline"`
+	k8sapi.ObjectMeta `json:"metadata,omitempty"`
+
+	Status              string    `json:"status,omitempty"`
+	Token               string    `json:"token,omitempty"`
+	Expiry              time.Time `json:"expiry"`
+	LastRequestTime     time.Time `json:"last_request"`
+	PollIntervalSeconds int       `json:"poll_interval"`
+}
+
+// DeviceTokenList is a list of DeviceTokens.
+type DeviceTokenList struct {
+	k8sapi.TypeMeta `json:",inline"`
+	k8sapi.ListMeta `json:"metadata,omitempty"`
+	DeviceTokens    []DeviceToken `json:"items"`
+}
+
+func (cli *client) fromStorageDeviceToken(t storage.DeviceToken) DeviceToken {
+	req := DeviceToken{
+		TypeMeta: k8sapi.TypeMeta{
+			Kind:       kindDeviceToken,
+			APIVersion: cli.apiVersion,
+		},
+		ObjectMeta: k8sapi.ObjectMeta{
+			Name:      t.DeviceCode,
+			Namespace: cli.namespace,
+		},
+		Status:              t.Status,
+		Token:               t.Token,
+		Expiry:              t.Expiry,
+		LastRequestTime:     t.LastRequestTime,
+		PollIntervalSeconds: t.PollIntervalSeconds,
+	}
+	return req
+}
+
+func toStorageDeviceToken(t DeviceToken) storage.DeviceToken {
+	return storage.DeviceToken{
+		DeviceCode:          t.ObjectMeta.Name,
+		Status:              t.Status,
+		Token:               t.Token,
+		Expiry:              t.Expiry,
+		LastRequestTime:     t.LastRequestTime,
+		PollIntervalSeconds: t.PollIntervalSeconds,
+	}
 }
