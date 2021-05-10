@@ -1,4 +1,4 @@
-FROM golang:1.15.6-alpine3.12 as builder
+FROM golang:1.15.6-alpine3.13 AS builder
 
 ENV BASE_DIR /go/src/github.com/dexidp/dex
 ENV GO111MODULE on
@@ -13,7 +13,7 @@ RUN go mod tidy -v
 RUN go mod verify
 RUN go build -v -o ${BASE_DIR}/bin/dex ${BASE_DIR}/cmd/dex
 
-FROM alpine:3.12
+FROM alpine:3.13.5
 
 ENV BASE_DIR /go/src/github.com/dexidp/dex
 LABEL source=git@github.com:kyma-incubator/dex.git
