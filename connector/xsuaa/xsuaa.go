@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dexidp/dex/connector/oidc"
 	"net/http"
 	"net/url"
 	"strings"
@@ -108,13 +109,15 @@ func (c *Config) Open(id string, logger log.Logger) (conn connector.Connector, e
 		return nil, fmt.Errorf("failed to get provider: %v", err)
 	}
 
+	endpoint := provider.Endpoint()
+
 	if c.BasicAuthUnsupported != nil {
 		// Setting "basicAuthUnsupported" always overrides our detection.
 		if *c.BasicAuthUnsupported {
-			registerBrokenAuthHeaderProvider(provider.Endpoint().TokenURL)
+			endpoint.AuthStyle = oauth2.AuthStyleInParams
 		}
 	} else if knownBrokenAuthHeaderProvider(c.Issuer) {
-		registerBrokenAuthHeaderProvider(provider.Endpoint().TokenURL)
+		endpoint.AuthStyle = oauth2.AuthStyleInParams
 	}
 
 	//This part is removed because in xsuaa returns all user groups when no scopes is defined in the token request
