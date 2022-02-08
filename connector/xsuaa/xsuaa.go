@@ -5,18 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/coreos/go-oidc"
+	"github.com/dexidp/dex/connector"
 	"github.com/dexidp/dex/connector/oidc"
+	"github.com/dexidp/dex/pkg/log"
+	"golang.org/x/oauth2"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/coreos/go-oidc"
-	"golang.org/x/oauth2"
-
-	"github.com/dexidp/dex/connector"
-	"github.com/dexidp/dex/pkg/log"
 )
 
 // Config holds configuration options for OpenID Connect logins.
@@ -90,13 +88,6 @@ func knownBrokenAuthHeaderProvider(issuerURL string) bool {
 // package ourselves and hope that other packages aren't calling it at the
 // same time.
 var registerMu = new(sync.Mutex)
-
-func registerBrokenAuthHeaderProvider(url string) {
-	registerMu.Lock()
-	defer registerMu.Unlock()
-
-	oauth2.RegisterBrokenAuthHeaderProvider(url)
-}
 
 // Open returns a connector which can be used to login users through an upstream
 // OpenID Connect provider.
