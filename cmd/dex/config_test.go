@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/dexidp/dex/connector/xsuaa"
 	"os"
 	"testing"
 
@@ -367,6 +368,47 @@ logger:
 		Logger: Logger{
 			Level:  "debug",
 			Format: "json",
+		},
+	}
+
+	var c Config
+	if err := yaml.Unmarshal(rawConfig, &c); err != nil {
+		t.Fatalf("failed to decode config: %v", err)
+	}
+	if diff := pretty.Compare(c, want); diff != "" {
+		t.Errorf("got!=want: %s", diff)
+	}
+}
+
+func TestConfigWithSpecialChars(t *testing.T) {
+	rawConfig := []byte(`
+issuer: $http$://127.0.0.1:5556/dex
+connectors:
+- type: xsuaa
+  id: $google
+  name: Google
+  config:
+    issuer: $https:$//accounts.google.com
+    clientID: $foo
+    clientSecret: $bar
+    redirectURI: http://127.0.0.1:5556/dex/callback/google
+
+`)
+
+	want := Config{
+		Issuer: "$http$://127.0.0.1:5556/dex",
+		StaticConnectors: []Connector{
+			{
+				Type: "xsuaa",
+				ID:   "$google",
+				Name: "Google",
+				Config: &xsuaa.Config{
+					Issuer:       "$https:$//accounts.google.com",
+					ClientID:     "$foo",
+					ClientSecret: "$bar",
+					RedirectURI:  "http://127.0.0.1:5556/dex/callback/google",
+				},
+			},
 		},
 	}
 
